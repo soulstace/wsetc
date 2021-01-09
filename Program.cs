@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Management;
 using System.ServiceProcess;
 
@@ -11,11 +12,13 @@ namespace wsetc
     {
         static void Main(string[] args)
         {
-            if (args.Length < 1)
+            if (args.Length < 1 || helpCommands.Any(args.Contains))
                 Console.WriteLine("Usage: wsetc services.reg");
             else
                 WriteFile(args[0]);
         }
+        
+        static readonly string[] helpCommands = { "/?", "-?", "-h", "help", "/help", "--help", "-help" };
 
         static void WriteFile(string path)
         {
