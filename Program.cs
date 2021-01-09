@@ -74,6 +74,7 @@ namespace wsetc
                             RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey);
                         int intStart = (int)rkSvc.GetValue("Start", 0);
 
+                        // service description is obtained using the Extended ServiceController class by Mohamed Sharaf
                         string mgpth = "Win32_Service.Name='" + sc.ServiceName + "'";
                         ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth));
                         string svcdesc = "";
