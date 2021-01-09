@@ -77,9 +77,7 @@ namespace wsetc
                         // service description is obtained using the Extended ServiceController class by Mohamed Sharaf
                         string mgpth = "Win32_Service.Name='" + sc.ServiceName + "'";
                         ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth));
-                        string svcdesc = "";
-                        if (mgobj["Description"] != null)
-                            svcdesc = mgobj["Description"].ToString();
+                        string svcdesc = (mgobj["Description"] != null) ? mgobj["Description"].ToString() : "";
 
                         using (sw = File.AppendText(mypath))
                         {
