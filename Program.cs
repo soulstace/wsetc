@@ -2,7 +2,6 @@
 using System;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Management;
 using System.ServiceProcess;
 
@@ -12,14 +11,12 @@ namespace wsetc
     {
         static void Main(string[] args)
         {
-            if (args.Length < 1 || helpCommands.Any(args.Contains))
-                Console.WriteLine("Usage: wsetc services.reg");
-            else
+            if (args.Length > 0 && args[0].Contains(".reg"))
                 WriteFile(args[0]);
+            else
+                Console.WriteLine("Usage: wsetc services.reg");
         }
         
-        static readonly string[] helpCommands = { "/?", "-?", "-h", "help", "/help", "--help", "-help" };
-
         static void WriteFile(string path)
         {
             StreamWriter sw;
@@ -28,7 +25,7 @@ namespace wsetc
             string mypath = Environment.ExpandEnvironmentVariables(path);
             if (File.Exists(mypath))
             {
-                Console.WriteLine("File already exists. Use a different filename.");
+                Console.WriteLine(mypath + " already exists. Use a different filename.");
                 return;
             }
 
