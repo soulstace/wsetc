@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Management;
 using System.ServiceProcess;
 
@@ -38,6 +39,7 @@ namespace wsetc
 
             FileVersionInfo krnl = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "ntoskrnl.exe"));
             ServiceController[] services = ServiceController.GetServices();
+            string[] randsvcs = { "AarSvc", "BcastDVRUserService", "BluetoothUserService", "CaptureService", "cbdhsvc", "CDPUserSvc", "ConsentUxUserSvc", "CredentialEnrollmentManagerUserSvc", "DeviceAssociationBrokerSvc", "DevicePickerUserSvc", "DevicesFlowUserSvc", "MessagingService", "OneSyncSvc", "PimIndexMaintenanceSvc", "PrintWorkflowUserSvc", "UdkUserSvc", "UnistoreSvc", "UserDataSvc", "WpnUserService" };
 
             using (StreamWriter sw = File.CreateText(path))
             {
@@ -61,17 +63,23 @@ namespace wsetc
                 {
                     if (!string.IsNullOrEmpty(sc.ServiceName))
                     {
+                        string serviceName = sc.ServiceName;
+                        if (serviceName.Contains("_"))
+                        {
+                            if (randsvcs.Any(serviceName.Split('_').ElementAt(0).Contains))
+                                serviceName = serviceName.Split('_').ElementAt(0);
+                        }
                         /* service description obtained using ServiceControllerEx by Mohamed Sharaf */
-                        string mgpth = "Win32_Service.Name='" + sc.ServiceName + "'";
+                        string mgpth = "Win32_Service.Name='" + serviceName + "'";
                         ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth));
                         string svcdesc = (mgobj["Description"] != null) ? mgobj["Description"].ToString() : "";
                         mgobj.Dispose();
 
                         sw.WriteLine("; " + sc.DisplayName);
                         sw.WriteLine("; " + svcdesc);
-                        sw.WriteLine(@"[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\" + sc.ServiceName + "]");
+                        sw.WriteLine(@"[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\" + serviceName + "]");
 
-                        RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + sc.ServiceName,
+                        RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + serviceName,
                             RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey);
                         int intStart = (int)rkSvc.GetValue("Start", 0);
                         if (!intStart.Equals(0))
