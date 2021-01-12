@@ -12,7 +12,7 @@ namespace wsetc
         static void Main(string[] args)
         {
             if (args.Length > 0 && args[0].Contains(".reg"))
-                WriteFile(args[0]);
+                WriteFile(Environment.ExpandEnvironmentVariables(args[0]));
             else
             {
                 Console.WriteLine("");
@@ -28,17 +28,18 @@ namespace wsetc
 
         static void WriteFile(string path)
         {
-            string mypath = Environment.ExpandEnvironmentVariables(path);
-            if (File.Exists(mypath))
+            if (File.Exists(path))
             {
-                Console.WriteLine(mypath + " already exists. Use a different filename.");
+                Console.WriteLine(path + " already exists. Use a different filename.");
                 return;
             }
-            Console.WriteLine("Exporting services into file " + mypath);
+
+            Console.WriteLine("Exporting services into file " + path);
 
             FileVersionInfo krnl = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "ntoskrnl.exe"));
             ServiceController[] services = ServiceController.GetServices();
-            using (StreamWriter sw = File.CreateText(mypath))
+
+            using (StreamWriter sw = File.CreateText(path))
             {
                 sw.WriteLine("Windows Registry Editor Version 5.00");
                 sw.WriteLine("");
@@ -60,11 +61,7 @@ namespace wsetc
                 {
                     if (!string.IsNullOrEmpty(sc.ServiceName))
                     {
-                        RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + sc.ServiceName,
-                            RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey);
-                        int intStart = (int)rkSvc.GetValue("Start", 0);
-
-                        // service description is obtained using the Extended ServiceController class by Mohamed Sharaf
+                        /* service description obtained using ServiceControllerEx by Mohamed Sharaf */
                         string mgpth = "Win32_Service.Name='" + sc.ServiceName + "'";
                         ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth));
                         string svcdesc = (mgobj["Description"] != null) ? mgobj["Description"].ToString() : "";
@@ -74,6 +71,9 @@ namespace wsetc
                         sw.WriteLine("; " + svcdesc);
                         sw.WriteLine(@"[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\" + sc.ServiceName + "]");
 
+                        RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + sc.ServiceName,
+                            RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey);
+                        int intStart = (int)rkSvc.GetValue("Start", 0);
                         if (!intStart.Equals(0))
                         {
                             sw.WriteLine("\"Start\"=dword:" + intStart);
@@ -82,7 +82,9 @@ namespace wsetc
                                 sw.WriteLine("\"DelayedAutoStart\"=dword:1");
                         }
                         else
+                        {
                             sw.WriteLine("; Start is 0 or unknown");
+                        }
                         sw.WriteLine("");
                         rkSvc.Close();
                     }
