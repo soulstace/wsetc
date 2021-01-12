@@ -28,7 +28,6 @@ namespace wsetc
         
         static void WriteFile(string path)
         {
-            StreamWriter sw;
             FileVersionInfo krnl = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "ntoskrnl.exe"));
 
             string mypath = Environment.ExpandEnvironmentVariables(path);
@@ -46,7 +45,7 @@ namespace wsetc
 
                 if (!File.Exists(mypath))
                 {
-                    using (sw = File.CreateText(mypath))
+                    using (StreamWriter sw = File.CreateText(mypath))
                     {
                         sw.WriteLine("Windows Registry Editor Version 5.00");
                         sw.WriteLine("");
@@ -79,7 +78,7 @@ namespace wsetc
                         ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth));
                         string svcdesc = (mgobj["Description"] != null) ? mgobj["Description"].ToString() : "";
 
-                        using (sw = File.AppendText(mypath))
+                        using (StreamWriter sw = File.AppendText(mypath))
                         {
                             sw.WriteLine("; " + sc.DisplayName);
                             sw.WriteLine("; " + svcdesc);
