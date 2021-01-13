@@ -59,6 +59,7 @@ namespace wsetc
                 sw.WriteLine("; 4 = Disabled");
                 sw.WriteLine("");
 
+                int count = 0;
                 foreach (ServiceController sc in services)
                 {
                     if (!string.IsNullOrEmpty(sc.ServiceName))
@@ -95,6 +96,7 @@ namespace wsetc
                         }
                         sw.WriteLine("");
                         rkSvc.Close();
+                        Console.Write("\r{0}/{1}", ++count, services.Length);
                     }
                 }
             }
