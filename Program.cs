@@ -39,7 +39,9 @@ namespace wsetc
 
             FileVersionInfo krnl = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "ntoskrnl.exe"));
             ServiceController[] services = ServiceController.GetServices();
-            string[] randsvcs = { "AarSvc", "BcastDVRUserService", "BluetoothUserService", "CaptureService", "cbdhsvc", "CDPUserSvc", "ConsentUxUserSvc", "CredentialEnrollmentManagerUserSvc", "DeviceAssociationBrokerSvc", "DevicePickerUserSvc", "DevicesFlowUserSvc", "MessagingService", "OneSyncSvc", "PimIndexMaintenanceSvc", "PrintWorkflowUserSvc", "UdkUserSvc", "UnistoreSvc", "UserDataSvc", "WpnUserService" };
+            string[] randsvcs = { "AarSvc", "BcastDVRUserService", "BluetoothUserService", "CaptureService", "cbdhsvc", "CDPUserSvc", "ConsentUxUserSvc", 
+                                 "CredentialEnrollmentManagerUserSvc", "DeviceAssociationBrokerSvc", "DevicePickerUserSvc", "DevicesFlowUserSvc", "MessagingService", 
+                                 "OneSyncSvc", "PenService", "PimIndexMaintenanceSvc", "PrintWorkflowUserSvc", "UdkUserSvc", "UnistoreSvc", "UserDataSvc", "WpnUserService" };
 
             using (StreamWriter sw = File.CreateText(path))
             {
