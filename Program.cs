@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Management;
 using System.ServiceProcess;
+using System.Text.RegularExpressions;
 
 namespace wsetc
 {
@@ -27,23 +28,20 @@ namespace wsetc
             }
         }
 
-        static void WriteFile(string path)
+        static void WriteFile(string filename)
         {
-            if (File.Exists(path))
+            if (File.Exists(filename))
             {
-                Console.WriteLine(path + " already exists. Use a different filename.");
+                Console.WriteLine($"{filename} already exists. Use a different filename.");
                 return;
             }
 
-            Console.WriteLine("Exporting services into file " + path);
+            Console.WriteLine($"Exporting services into file {filename}");
 
             FileVersionInfo krnl = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "ntoskrnl.exe"));
             ServiceController[] services = ServiceController.GetServices();
-            string[] randsvcs = { "AarSvc", "BcastDVRUserService", "BluetoothUserService", "CaptureService", "cbdhsvc", "CDPUserSvc", "ConsentUxUserSvc", 
-                                 "CredentialEnrollmentManagerUserSvc", "DeviceAssociationBrokerSvc", "DevicePickerUserSvc", "DevicesFlowUserSvc", "MessagingService", 
-                                 "OneSyncSvc", "PenService", "PimIndexMaintenanceSvc", "PrintWorkflowUserSvc", "UdkUserSvc", "UnistoreSvc", "UserDataSvc", "WpnUserService" };
 
-            using (StreamWriter sw = File.CreateText(path))
+            using (StreamWriter sw = File.CreateText(filename))
             {
                 sw.WriteLine("Windows Registry Editor Version 5.00");
                 sw.WriteLine("");
@@ -52,8 +50,8 @@ namespace wsetc
                 sw.WriteLine("; Author: soulstace");
                 sw.WriteLine("");
                 //sw.WriteLine("; OS Version: " + Environment.OSVersion.VersionString);
-                sw.WriteLine("; OS/Kernel Version: " + krnl.FileVersion); /* new method for windows 10 */
-                sw.WriteLine("; Total services: " + services.Length);
+                sw.WriteLine($"; OS/Kernel Version: {krnl.FileVersion}"); /* new method for windows 10 */
+                sw.WriteLine($"; Total services: {services.Length}");
                 sw.WriteLine("");
                 sw.WriteLine("; DWORD values and their meanings;");
                 sw.WriteLine("; 2 = Automatic");
@@ -67,37 +65,48 @@ namespace wsetc
                     if (!string.IsNullOrEmpty(sc.ServiceName))
                     {
                         string serviceName = sc.ServiceName;
+                        string dispName = sc.DisplayName;
+                        string svcdesc = "";
+                        string pattern = @"_[0-9a-fA-F]{5}"; /* find random services using pattern to match _ followed by a 5-character hex string */
+                        
                         if (serviceName.Contains("_"))
                         {
-                            if (randsvcs.Any(serviceName.Split('_').ElementAt(0).Contains))
+                            if (Regex.IsMatch(serviceName, pattern))
+                            {
                                 serviceName = serviceName.Split('_').ElementAt(0);
+                                dispName = dispName.Split('_').ElementAt(0);
+                            }
                         }
+
                         /* service description obtained using ServiceControllerEx by Mohamed Sharaf */
-                        string mgpth = "Win32_Service.Name='" + serviceName + "'";
-                        ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth));
-                        string svcdesc = (mgobj["Description"] != null) ? mgobj["Description"].ToString() : "";
-                        mgobj.Dispose();
-
-                        sw.WriteLine("; " + sc.DisplayName);
-                        sw.WriteLine("; " + svcdesc);
-                        sw.WriteLine(@"[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\" + serviceName + "]");
-
-                        RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + serviceName,
-                            RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey);
-                        int intStart = (int)rkSvc.GetValue("Start", 0);
-                        if (!intStart.Equals(0))
+                        string mgpth = $"Win32_Service.Name='{serviceName}'";
+                        using (ManagementObject mgobj = new ManagementObject(new ManagementPath(mgpth)))
                         {
-                            sw.WriteLine("\"Start\"=dword:" + intStart);
+                            svcdesc = (mgobj["Description"] != null) ? mgobj["Description"].ToString() : "";
+                        }
 
-                            if ((int)rkSvc.GetValue("DelayedAutoStart", 0) == 1)
-                                sw.WriteLine("\"DelayedAutoStart\"=dword:1");
-                        }
-                        else
+                        sw.WriteLine($"; {dispName}");
+                        if (!string.IsNullOrEmpty(svcdesc))
+                            sw.WriteLine($"; {svcdesc}");
+                        sw.WriteLine($@"[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\{serviceName}]");
+
+                        using (RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{serviceName}",
+                            RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey))
                         {
-                            sw.WriteLine("; Start is 0 or unknown");
+                            int intStart = (int)rkSvc.GetValue("Start", 0);
+                            if (!intStart.Equals(0))
+                            {
+                                sw.WriteLine($"\"Start\"=dword:{intStart}");
+
+                                if ((int)rkSvc.GetValue("DelayedAutoStart", 0) == 1)
+                                    sw.WriteLine("\"DelayedAutoStart\"=dword:1");
+                            }
+                            else
+                            {
+                                sw.WriteLine("; Start is 0 or unknown");
+                            }
+                            sw.WriteLine("");
                         }
-                        sw.WriteLine("");
-                        rkSvc.Close();
                         Console.Write("\r{0}/{1}", ++count, services.Length);
                     }
                 }
