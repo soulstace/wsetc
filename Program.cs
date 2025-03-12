@@ -14,7 +14,10 @@ namespace wsetc
         static void Main(string[] args)
         {
             if (args.Length > 0 && args[0].Contains(".reg"))
-                WriteFile(Environment.ExpandEnvironmentVariables(args[0]));
+            {
+                bool includeDevices = args.Any("--devices".Contains);
+                WriteFile(Environment.ExpandEnvironmentVariables(args[0]), includeDevices);
+            }
             else
             {
                 Console.WriteLine("");
@@ -24,11 +27,11 @@ namespace wsetc
                 Console.WriteLine("");
                 Console.WriteLine("Back up your current Windows services configuration in an easy-to-read/modify/restore .reg format");
                 Console.WriteLine("");
-                Console.WriteLine("Usage: wsetc services.reg");
+                Console.WriteLine("Usage: wsetc services.reg --devices");
             }
         }
 
-        static void WriteFile(string filename)
+        static void WriteFile(string filename, bool includeDevices)
         {
             if (File.Exists(filename))
             {
@@ -39,7 +42,9 @@ namespace wsetc
             Console.WriteLine($"Exporting services into file {filename}");
 
             FileVersionInfo krnl = FileVersionInfo.GetVersionInfo(Path.Combine(Environment.SystemDirectory, "ntoskrnl.exe"));
-            ServiceController[] services = ServiceController.GetServices();
+            ServiceController[] services = includeDevices ?
+                    ServiceController.GetServices().Concat(ServiceController.GetDevices()).ToArray() :
+                    ServiceController.GetServices();
 
             using (StreamWriter sw = File.CreateText(filename))
             {
@@ -54,6 +59,8 @@ namespace wsetc
                 sw.WriteLine($"; Total services: {services.Length}");
                 sw.WriteLine("");
                 sw.WriteLine("; DWORD values and their meanings;");
+                sw.WriteLine("; 0 = Boot");
+                sw.WriteLine("; 1 = System");
                 sw.WriteLine("; 2 = Automatic");
                 sw.WriteLine("; 3 = Manual");
                 sw.WriteLine("; 4 = Disabled");
@@ -93,17 +100,17 @@ namespace wsetc
                         using (RegistryKey rkSvc = Registry.LocalMachine.OpenSubKey($@"SYSTEM\CurrentControlSet\Services\{serviceName}",
                             RegistryKeyPermissionCheck.ReadSubTree, System.Security.AccessControl.RegistryRights.ReadKey))
                         {
-                            int intStart = (int)rkSvc.GetValue("Start", 0);
-                            if (!intStart.Equals(0))
+                            object startVal = rkSvc.GetValue("Start", null);
+                            if (startVal != null)
                             {
-                                sw.WriteLine($"\"Start\"=dword:{intStart}");
+                                sw.WriteLine($"\"Start\"=dword:{(int)startVal}");
 
                                 if ((int)rkSvc.GetValue("DelayedAutoStart", 0) == 1)
                                     sw.WriteLine("\"DelayedAutoStart\"=dword:1");
                             }
                             else
                             {
-                                sw.WriteLine("; Start is 0 or unknown");
+                                sw.WriteLine("; \"Start\" value is null");
                             }
                             sw.WriteLine("");
                         }
